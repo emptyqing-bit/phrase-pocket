@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace PhrasePocket {
     internal static class Definitions {
+        private static readonly string BundledDictionary = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ecdict-bundled.db");
         private static readonly Dictionary<string,string> BuiltIn = LoadBuiltIn();
         private static Dictionary<string,string> LoadBuiltIn() {
             using (var stream = typeof(Definitions).Assembly.GetManifestResourceStream("PhrasePocket.Lexicon.json"))
@@ -27,15 +28,20 @@ namespace PhrasePocket {
             if (key.Contains(" ") && BuiltIn.TryGetValue(key, out meaning)) {
                 entry.meaning = meaning; entry.source = "builtin"; return;
             }
-            try {
-                meaning = DictionaryDb.Lookup(Data.DictionaryPath, key);
-                if (!string.IsNullOrEmpty(meaning)) {
-                    entry.meaning = meaning; entry.source = "ecdict"; return;
-                }
-            } catch (Exception ex) {
-                if (!(ex is IOException || ex is DllNotFoundException || ex is EntryPointNotFoundException || ex is UnauthorizedAccessException)) throw;
+            meaning = ReadDictionary(Data.DictionaryPath, key);
+            if (string.IsNullOrEmpty(meaning)) meaning = ReadDictionary(BundledDictionary, key);
+            if (!string.IsNullOrEmpty(meaning)) {
+                entry.meaning = meaning; entry.source = "ecdict"; return;
             }
             if (BuiltIn.TryGetValue(key, out meaning)) { entry.meaning = meaning; entry.source = "builtin"; }
+        }
+        private static string ReadDictionary(string path, string key) {
+            try {
+                return DictionaryDb.Lookup(path, key);
+            } catch (Exception ex) {
+                if (!(ex is IOException || ex is DllNotFoundException || ex is EntryPointNotFoundException || ex is UnauthorizedAccessException)) throw;
+                return "";
+            }
         }
         internal static bool ValidModel(string model) {
             return !string.IsNullOrEmpty(model) && !model.EndsWith("-cloud", StringComparison.OrdinalIgnoreCase) &&

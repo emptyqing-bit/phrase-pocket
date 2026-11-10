@@ -1,3 +1,4 @@
+param([switch]$SkipDictionary)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $output = Join-Path $root 'build'
@@ -17,4 +18,8 @@ $arguments = @('/nologo', '/target:winexe', '/optimize+', '/codepage:65001',
     "/win32manifest:$manifest", "/resource:$lexicon,PhrasePocket.Lexicon.json", "/out:$exe") + $sources
 & $compiler @arguments
 if ($LASTEXITCODE -ne 0) { throw "Build failed ($LASTEXITCODE)." }
+if (-not $SkipDictionary) {
+    & node (Join-Path $PSScriptRoot 'build-dictionary.mjs') | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "Bundled dictionary build failed ($LASTEXITCODE)." }
+}
 Write-Output $exe

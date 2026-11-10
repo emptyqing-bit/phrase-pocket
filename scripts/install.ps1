@@ -21,7 +21,12 @@ if ($Uninstall) {
     Write-Output 'Removed this copy of the browser bridge. Local collections were kept.'
     return
 }
-if (-not (Test-Path -LiteralPath $exe)) { & (Join-Path $PSScriptRoot 'build.ps1') | Out-Null }
+$dictionary = Join-Path $root 'build\ecdict-bundled.db'
+if (-not (Test-Path -LiteralPath $exe) -or -not (Test-Path -LiteralPath $dictionary)) {
+    $buildScript = Join-Path $PSScriptRoot 'build.ps1'
+    if (-not (Test-Path -LiteralPath $buildScript)) { throw 'Please extract the complete Windows archive, including its build folder.' }
+    & $buildScript | Out-Null
+}
 $data = [ordered]@{
     name = $name
     description = 'Phrase Pocket desktop bridge'

@@ -30,12 +30,15 @@ $windowsFiles = @{
     'README.md' = (Join-Path $root 'README.md')
     'scripts/install.ps1' = (Join-Path $PSScriptRoot 'install.ps1')
     'build/PhrasePocket.exe' = $exe
+    'build/ecdict-bundled.db' = (Join-Path $build 'ecdict-bundled.db')
+    'ECDICT-LICENSE.txt' = (Join-Path $root 'desktop\ECDICT-LICENSE.txt')
 }
 foreach ($name in $extensionFiles.Keys) { $windowsFiles["extension/$name"] = $extensionFiles[$name] }
 $sourceFiles = @{}
 foreach ($name in @('.gitignore','Install.cmd','Uninstall.cmd','README.md')) {
     $sourceFiles[$name] = Join-Path $root $name
 }
+$sourceFiles['desktop/ECDICT-LICENSE.txt'] = Join-Path $root 'desktop\ECDICT-LICENSE.txt'
 foreach ($dir in @('desktop','extension','scripts','.github')) {
     $path = Join-Path $root $dir
     if (-not (Test-Path -LiteralPath $path)) { continue }

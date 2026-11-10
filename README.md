@@ -6,7 +6,7 @@
 | --- | --- |
 | 视频旁记录单词和备忘 | 桌面常驻卡片，可调轮换间隔 |
 | 字幕可读时预填，也能直接输入 | 可选只显示单词、只显示备忘或两种都显示 |
-| 收藏、编辑、离线查常用表达 | 可导入完整 ECDICT，或接入本机 Ollama |
+| 收藏、编辑、离线查常用表达 | 随包内置 6 万条英汉词条，也可导入完整 ECDICT |
 
 ## 安装浏览器扩展
 
@@ -22,7 +22,9 @@
 2. 在扩展的「我的收藏」点击「连接 Windows 卡片」。已有浏览器收藏会复制到桌面收藏，之后新记录直接保存到桌面收藏。切回浏览器模式时会将当前桌面收藏复制回来。
 3. 在桌面卡片右上角「⋯」切换显示类型、轮换频率和释义设置。默认每 5 分钟换一条。拖动标题可挪位置，点 × 收起后双击系统托盘图标可展开。
 
-内置词表能查 **awkward**、**count me in**、**I’m down** 等常用表达。想查更多，可从 [ECDICT 发布页](https://github.com/skywind3000/ECDICT/releases/tag/1.0.28)下载 **ecdict-sqlite-28.zip**，解压后在桌面「⋯ → 导入 ECDICT 词典」选择数据库。已有的无释义词可在收藏页点「查释义」。
+插件独立使用时，内置小词表能查 **awkward**、**count me in**、**I’m down** 等常用表达。Windows 安装包另含从 ECDICT 选出的 6 万条英汉词条，连接桌面后即可离线查询。已有的无释义词可在收藏页点「查释义」。
+
+需要更多词条时，可从 [ECDICT 发布页](https://github.com/skywind3000/ECDICT/releases/tag/1.0.28)下载 **ecdict-sqlite-28.zip**，解压后在桌面「⋯ → 导入 ECDICT 词典」选择数据库。随包词库使用 [ECDICT MIT 许可](https://github.com/skywind3000/ECDICT/blob/39cfb9672c0906b63569e0453c2e6abfb9ab182a/LICENSE)。
 
 如果已安装 [Ollama](https://docs.ollama.com/) 并下载了本地模型，可在「⋯ → 设置本机模型」填写模型名。遇到词典未收录的表达，先保存再补释义。留空即关闭。
 
@@ -35,5 +37,5 @@
 ## 从源码构建
 
 - 浏览器扩展：直接加载 **extension/**。使用 Node.js 22.13+ 运行 **node scripts/browser-smoke.mjs**。
-- Windows 组件：运行 **scripts/build.ps1**，产物在 **build/PhrasePocket.exe**，不需要另装 .NET SDK。
+- Windows 组件：使用 Node.js 22.13+ 运行 **scripts/build.ps1**。首次构建会下载固定版本的 ECDICT 源数据，生成 **build/PhrasePocket.exe** 和 **build/ecdict-bundled.db**。不需要另装 .NET SDK。
 - 一次打包插件、Windows 版和源码：运行 **scripts/package.ps1**。运行 **node scripts/smoke.mjs --ui** 验证本机通信、词典导入和桌面窗口初始化。

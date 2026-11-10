@@ -91,6 +91,18 @@ try {
   const migrated = (await call({op:'list'})).entries.filter(x => x.text === 'local-only expression');
   assert.equal(migrated.length, 1);
   assert.equal(migrated[0].meaning, imported[0].meaning);
+  if (process.argv.includes('--bundled-dictionary')) {
+    const bundled = new DatabaseSync(path.join(buildDir, 'ecdict-bundled.db'), {readOnly:true});
+    try {
+      assert.equal(bundled.prepare('SELECT count(*) AS count FROM stardict').get().count, 60000);
+    } finally {
+      bundled.close();
+    }
+    const bundledWord = await call({op:'save', kind:'word', text:'perseverance'});
+    assert.equal(bundledWord.entry.source, 'ecdict');
+    assert.match(bundledWord.entry.meaning, /[\u3400-\u9fff]/);
+    console.log('Passed: built-in 60,000-entry dictionary lookup with a user-imported dictionary also present.');
+  }
   if (process.argv.includes('--ui')) assert.equal((await invoke(['--ui-smoke'])).code, 0);
 
   if (process.argv.includes('--model-fixture')) {
