@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>我的收藏 · 随手收</title>
+<link rel="stylesheet" href="library.css">
+<main>
+  <header><div class="mark" aria-hidden="true">Aa</div><div><h1>我的收藏</h1><p>随手收 · 保存在这台电脑</p></div></header>
+  <div class="connection">
+    <p id="connection" class="details" role="status">正在读取保存位置…</p>
+    <button type="button" id="bridge" hidden>连接 Windows 卡片</button>
+  </div>
+  <div class="toolbar" aria-label="筛选收藏">
+    <button type="button" data-kind="all" aria-pressed="true">全部</button>
+    <button type="button" data-kind="word" aria-pressed="false">单词</button>
+    <button type="button" data-kind="note" aria-pressed="false">备忘</button>
+    <button type="button" id="refresh">刷新</button>
+  </div>
+  <p id="status" role="status">正在读取收藏…</p>
+  <div id="entries"></div>
+  <button type="button" id="more" hidden>加载更多</button>
+</main>
+<script src="library.js"></script>
+</html>
