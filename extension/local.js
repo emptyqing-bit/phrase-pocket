@@ -25,7 +25,10 @@ const LocalPocket = (() => {
     switch (request.op) {
       case 'list': {
         const offset = Math.max(0, Number.isInteger(request.offset) ? request.offset : 0);
-        return {ok:true, entries:entries.slice().reverse().slice(offset,offset+100), total:entries.length};
+        const query = clean(request.query,120).toLocaleLowerCase();
+        const selected = entries.filter(entry => (!['word','note'].includes(request.kind) || entry.kind === request.kind) &&
+          (!query || (entry.text + '\n' + (entry.meaning || '')).toLocaleLowerCase().includes(query)));
+        return {ok:true, entries:selected.reverse().slice(offset,offset+100), total:selected.length};
       }
       case 'save': {
         const kind = request.kind;
@@ -67,6 +70,38 @@ const LocalPocket = (() => {
         if (!existing) return {ok:false, code:'not_found'};
         entries.splice(entries.indexOf(existing),1);
         return commit({ok:true});
+      case 'import': {
+        if (!Array.isArray(request.entries) || request.entries.length > 4) return bad;
+        for (const entry of request.entries) {
+          if (!entry || !['word','note'].includes(entry.kind) || !clean(entry.text,240) ||
+            (entry.kind === 'word' && !normalize(clean(entry.text,240)))) return bad;
+        }
+        for (const value of request.entries) {
+          const text = clean(value.text,240);
+          const meaning = value.kind === 'word' ? clean(value.meaning,320) : '';
+          const source = ['builtin','ecdict','model'].includes(value.source) ? value.source : 'manual';
+          const previous = entries.find(entry => entry.kind === value.kind && match(value.kind,entry.text,text));
+          if (previous) {
+            if (meaning && (!previous.meaning || (source === 'manual' && previous.source !== 'manual'))) {
+              previous.meaning = meaning;
+              previous.source = source;
+            }
+            continue;
+          }
+          const entry = {id:crypto.randomUUID(), kind:value.kind, text, meaning, source:meaning ? source : '',
+            createdAt:Number.isFinite(Date.parse(value.createdAt)) ? new Date(value.createdAt).toISOString() : new Date().toISOString()};
+          if (entry.kind === 'word' && !meaning) {
+            entry.meaning = await define(text,'');
+            entry.source = entry.meaning ? 'builtin' : '';
+          }
+          if (entry.kind === 'word' && ['known','again'].includes(value.review) && Number.isFinite(Date.parse(value.reviewedAt))) {
+            entry.review = value.review;
+            entry.reviewedAt = new Date(value.reviewedAt).toISOString();
+          }
+          entries.push(entry);
+        }
+        return commit({ok:true});
+      }
       default: return bad;
     }
   }

@@ -40,6 +40,7 @@ namespace PhrasePocket {
         public string text { get; set; }
         public string meaning { get; set; }
         public string context { get; set; }
+        public string query { get; set; }
         public int offset { get; set; }
         public List<Entry> entries { get; set; }
     }
@@ -126,8 +127,13 @@ namespace PhrasePocket {
                 case "save": return Save(request);
                 case "import": return Import(request);
                 case "list": return Data.Entries<object>(entries => {
-                    int offset = Math.Min(Math.Max(request.offset, 0), entries.Count);
-                    return new { ok=true, entries=entries.AsEnumerable().Reverse().Skip(offset).Take(100).ToArray(), total=entries.Count };
+                    string query = Data.Clean(request.query, 120);
+                    var selected = entries.Where(x => (request.kind != "word" && request.kind != "note") || x.kind == request.kind)
+                        .Where(x => query.Length == 0 || x.text.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            (!string.IsNullOrEmpty(x.meaning) && x.meaning.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0))
+                        .Reverse().ToList();
+                    int offset = Math.Min(Math.Max(request.offset, 0), selected.Count);
+                    return new { ok=true, entries=selected.Skip(offset).Take(100).ToArray(), total=selected.Count };
                 }, false);
                 case "update": return Update(request);
                 case "delete": return Data.Entries<object>(entries => {
@@ -175,6 +181,11 @@ namespace PhrasePocket {
                         meaning=meaning, source=meaning.Length > 0 ? source : "",
                         createdAt=DateTime.TryParse(item.createdAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out stamp)
                             ? stamp.ToUniversalTime().ToString("o",CultureInfo.InvariantCulture) : Data.Now()};
+                    if (imported.kind == "word" && (item.review == "known" || item.review == "again") &&
+                        DateTime.TryParse(item.reviewedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out stamp)) {
+                        imported.review = item.review;
+                        imported.reviewedAt = stamp.ToUniversalTime().ToString("o",CultureInfo.InvariantCulture);
+                    }
                     if (imported.kind == "word" && meaning.Length == 0) Definitions.Fill(imported, "");
                     entries.Add(imported);
                 }

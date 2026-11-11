@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
-const files = new Map(await Promise.all(['local.js','worker.js','lexicon.json'].map(async name =>
+const files = new Map(await Promise.all(['local.js','worker.js','lexicon.json','transfer.js'].map(async name =>
   [name, await readFile(new URL('../extension/'+name, import.meta.url), 'utf8')])));
 let listener, online = false;
 const stored = {}, desktop = [], nativeCalls = [];
@@ -66,4 +66,31 @@ assert.equal((await call({op:'list'})).total,2);
 assert.equal((await call({op:'save',kind:'word',text:"I'm down!"},page)).duplicate,true);
 assert.equal((await call({op:'update',id:stored.entries[0].id,text:stored.entries[0].text,meaning:'口语释义'})).ok,true);
 assert.match(JSON.stringify(stored),/口语释义/);
+vm.runInContext(files.get('transfer.js'),env,{filename:'transfer.js'});
+const exported = await call({op:'export'});
+const backup = env.PocketTransfer.backup(exported.entries);
+const restored = env.PocketTransfer.parseBackup(backup);
+assert.equal(restored.length,2);
+assert.equal(restored.find(entry => entry.kind === 'note').text,'周末逛市集');
+assert.equal((await call({op:'import',expectedMode:'desktop',entries:restored})).ok,false);
+assert.equal((await call({op:'import',expectedMode:'browser',entries:restored})).ok,true);
+assert.equal((await call({op:'list'})).total,2);
+const anki = env.PocketTransfer.anki([
+  {kind:'word',text:'a "quoted"\tterm',meaning:'中文\n释义'},
+  {kind:'note',text:'备忘',meaning:'不可导入词卡'},
+  {kind:'word',text:'undefined meaning',meaning:''}
+]);
+assert.equal(anki.count,1);
+assert.match(anki.text,/"a ""quoted""\tterm"/);
+assert.doesNotMatch(anki.text,/备忘|不可导入词卡|undefined meaning/);
+assert.throws(() => env.PocketTransfer.parseBackup('{"format":"phrase-pocket","version":1,"entries":[{"kind":"word","text":"..."}]}'));
+stored.entries = [{id:'old',kind:'word',text:'oldest expression',meaning:'最早的一条释义'},
+  ...Array.from({length:105},(_,i)=>({id:'item-'+i,kind:'note',text:'备忘 '+i,meaning:''}))];
+const search = await call({op:'list',query:'最早',kind:'word'});
+assert.equal(search.total,1);
+assert.equal(search.entries[0].id,'old');
+assert.equal((await call({op:'list',kind:'note'})).total,105);
+assert.equal((await call({op:'list',kind:'note',offset:100})).entries.length,5);
+assert.equal((await call({op:'export'})).entries.length,106);
+console.log('Passed: whole-library search, backup round-trip, merge deduplication, import-mode check and Anki text escaping.');
 console.log('Passed: browser-only capture, two concurrent saves, no subtitle history, optional desktop connection and disconnect.');

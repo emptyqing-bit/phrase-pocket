@@ -91,6 +91,11 @@ try {
   const migrated = (await call({op:'list'})).entries.filter(x => x.text === 'local-only expression');
   assert.equal(migrated.length, 1);
   assert.equal(migrated[0].meaning, imported[0].meaning);
+  assert.equal((await call({op:'list',kind:'note',query:'并行记录'})).total,6);
+  assert.equal((await call({op:'list',kind:'word',query:'浏览器里手写'})).entries[0].text,'local-only expression');
+  const preserved = {kind:'word',text:'restored review',meaning:'恢复的手写释义',source:'manual',review:'known',reviewedAt:new Date().toISOString()};
+  assert.equal((await call({op:'import',entries:[preserved]})).ok,true);
+  assert.equal((await call({op:'list',query:'restored review'})).entries[0].review,'known');
   if (process.argv.includes('--bundled-dictionary')) {
     const bundled = new DatabaseSync(path.join(buildDir, 'ecdict-bundled.db'), {readOnly:true});
     try {

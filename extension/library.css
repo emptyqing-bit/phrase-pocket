@@ -8,6 +8,8 @@ p,label{overflow-wrap:anywhere}
 header p,#status,.details{color:var(--dim);font-size:13px}#status{margin:8px 0}
 .toolbar,.actions{display:flex;flex-wrap:wrap;gap:6px}
 .connection{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.search{display:flex;gap:6px;margin-top:12px}.search input{flex:1;min-width:0}
+.transfer{margin-top:10px}.transfer summary{cursor:pointer;color:var(--dim)}.transfer .actions{margin:8px 0}
 button,input,textarea{font:inherit}
 button{cursor:pointer;background:var(--card);color:inherit;border:1px solid var(--line);border-radius:8px;padding:5px 10px}
 button[aria-pressed=true],.primary{background:var(--key);color:var(--on-key)}

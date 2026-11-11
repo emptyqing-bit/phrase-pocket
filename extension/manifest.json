@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "随手收",
   "description": "在 TikTok 网页记录英文表达和备忘，在 Windows 桌面复习。",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "minimum_chrome_version": "123",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0ROHeybu8dWMEjW2ECW3dV5Gdxd02n2TyuB+MjSQHwmQa/Yr85c0ZTTHLLBysDc8vNYiiAXWie4N3IDWdP9f74ONjMXO4MRcWbYK8t/j2fW3PgJZ32zLuz6YkXAHWkjbEOfFWggHIga9wkMabImu1B3aef8xcisj1L9rwch5x4nEGSab6U+lKkBt0szM24mciMtY9hNbaJc0ew0fP+ucV0j06H6Kfkq2cVi8a9QnXl+qCAaOkX5o+TZQNN5vhnz0LVs5kieDJUMvLx+ALeCUxuNFAV2LofeuX2MP9PFAhkrMpGSlJyXYHQnGeAWQAsgZB2MX6EYHnM7PKCCm/rY7EwIDAQAB",
   "permissions": ["storage"],

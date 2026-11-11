@@ -14,7 +14,8 @@ const messageFor = {
   bad_request: '请检查输入内容。',
   duplicate: '相同内容已经在收藏里。',
   storage: '本机收藏无法读写。请检查磁盘后重试。',
-  dictionary: '本地词库暂时无法读取。'
+  dictionary: '本地词库暂时无法读取。',
+  mode_changed: '保存位置已改变，请重新选择导入。'
 };
 
 function failed(error) {
@@ -27,19 +28,22 @@ function failed(error) {
 
 async function route(request) {
   const {mode, entries} = await chrome.storage.local.get({mode:'browser', entries:[]});
+  if (request.op === 'import' && request.expectedMode !== mode) return {ok:false, code:'mode_changed'};
   if (request.op === 'connection') return {ok:true, mode};
   if (request.op === 'connect') {
     if (mode === 'desktop') return {ok:true, mode};
     if (!(await send({op:'ping'}))?.ok) return {ok:false, code:'storage'};
     for (let i = 0; i < entries.length; i += 4) {
-      const batch = entries.slice(i,i+4).map(({kind,text,meaning,source,createdAt}) => ({kind,text,meaning,source,createdAt}));
+      const batch = entries.slice(i,i+4).map(({kind,text,meaning,source,createdAt,review,reviewedAt}) =>
+        ({kind,text,meaning,source,createdAt,review,reviewedAt}));
       const result = await send({op:'import', entries:batch});
       if (!result?.ok) return {ok:false, code:result?.code || 'storage'};
     }
     await chrome.storage.local.set({mode:'desktop'});
     return {ok:true, mode:'desktop'};
   }
-  if (request.op === 'disconnect') {
+  if (request.op === 'disconnect' || request.op === 'export') {
+    if (request.op === 'export' && mode !== 'desktop') return {ok:true, entries};
     if (mode === 'browser') return {ok:true, mode};
     const copied = [];
     let expected;
@@ -51,6 +55,7 @@ async function route(request) {
       copied.push(...page.entries);
     } while (copied.length < expected);
     if (new Set(copied.map(x => x.id)).size !== expected) return {ok:false, code:'storage'};
+    if (request.op === 'export') return {ok:true, entries:copied.reverse()};
     await chrome.storage.local.set({mode:'browser', entries:copied.reverse()});
     return {ok:true, mode:'browser'};
   }
@@ -63,7 +68,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const page = origin === 'https://www.tiktok.com' || origin === 'https://tiktok.com';
   const library = sender.url === chrome.runtime.getURL('library.html');
   if ((!page || !['save', 'openLibrary'].includes(message.op)) &&
-      (!library || !['list', 'update', 'delete', 'retry', 'connection', 'connect', 'disconnect'].includes(message.op))) return;
+      (!library || !['list', 'update', 'delete', 'retry', 'connection', 'connect', 'disconnect', 'export', 'import'].includes(message.op))) return;
   if (message.op === 'openLibrary') {
     chrome.runtime.openOptionsPage().then(() => respond({ok:true}), () => respond({ok:false}));
     return true;
@@ -73,8 +78,20 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     request = {op:'save', kind:message.kind, text:message.text, context:message.kind === 'word' ? message.context : ''};
   } else if (message.op === 'update') {
     request = {op:'update', id:message.id, text:message.text, meaning:message.meaning};
+  } else if (message.op === 'import') {
+    if (!Array.isArray(message.entries) || message.entries.length > 4) {
+      respond({ok:false, error:'请检查导入的备份文件。'});
+      return;
+    }
+    request = {op:'import', expectedMode:message.expectedMode, entries:message.entries.map(entry => ({
+      kind:entry?.kind, text:entry?.text, meaning:entry?.meaning, source:entry?.source,
+      createdAt:entry?.createdAt, review:entry?.review, reviewedAt:entry?.reviewedAt
+    }))};
   } else {
-    request = {op:message.op, id:message.id, offset:message.op === 'list' && Number.isInteger(message.offset) ? message.offset : 0};
+    request = {op:message.op, id:message.id,
+      offset:message.op === 'list' && Number.isInteger(message.offset) ? message.offset : 0,
+      kind:message.op === 'list' ? message.kind : undefined,
+      query:message.op === 'list' ? message.query : undefined};
   }
   serialize(() => route(request)).then(result => {
     if (!result?.ok) {
