@@ -5,6 +5,18 @@ const LocalPocket = (() => {
   const match = (kind,a,b) => kind === 'word' ? normalize(a) === normalize(b) : a === b;
   const bad = {ok:false, code:'bad_request'};
   let lexicon;
+  function unpack(stored) {
+    if (Array.isArray(stored)) return stored;
+    return [...stored.words, ...stored.notes];
+  }
+  function store(entries, extra = {}) {
+    if (entries.some(entry => !entry || (entry.kind !== 'word' && entry.kind !== 'note')))
+      throw Error('Invalid collection entry.');
+    return chrome.storage.local.set({...extra, entries:{
+      words:entries.filter(entry => entry.kind === 'word'),
+      notes:entries.filter(entry => entry.kind === 'note')
+    }});
+  }
   async function define(text, context) {
     lexicon ??= fetch(chrome.runtime.getURL('lexicon.json')).then(r => {
       if (!r.ok) throw Error('lexicon');
@@ -19,7 +31,7 @@ const LocalPocket = (() => {
     const existing = entries.find(x => x.id === request.id);
     const text = clean(request.text,240);
     const commit = async result => {
-      await chrome.storage.local.set({entries});
+      await store(entries);
       return result;
     };
     switch (request.op) {
@@ -105,5 +117,5 @@ const LocalPocket = (() => {
       default: return bad;
     }
   }
-  return {handle};
+  return {handle, unpack, store};
 })();

@@ -21,6 +21,11 @@ globalThis.PocketTransfer = (() => {
     let value;
     try {value = JSON.parse(text);} catch {throw Error('文件内容不是有效的 JSON 备份。');}
     if (Array.isArray(value)) return records(value);
+    if (Array.isArray(value?.words) && Array.isArray(value?.notes)) {
+      if (!value.words.every(entry => entry?.kind === 'word') || !value.notes.every(entry => entry?.kind === 'note'))
+        throw Error('备份中的记录类型与收藏不匹配。');
+      return records([...value.words, ...value.notes]);
+    }
     if (value?.format !== 'phrase-pocket' || value.version !== 1) throw Error('请选择随手收导出的 JSON 备份。');
     return records(value.entries);
   }

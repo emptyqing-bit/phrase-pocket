@@ -11,10 +11,10 @@ header p,#status,.details{color:var(--dim);font-size:13px}#status{margin:8px 0}
 .search{display:flex;gap:6px;margin-top:12px}.search input{flex:1;min-width:0}
 .transfer{margin-top:10px}.transfer summary{cursor:pointer;color:var(--dim)}.transfer .actions{margin:8px 0}
 button,input,textarea{font:inherit}
-button{cursor:pointer;background:var(--card);color:inherit;border:1px solid var(--line);border-radius:8px;padding:5px 10px}
-button[aria-pressed=true],.primary{background:var(--key);color:var(--on-key)}
+button,.toolbar a{cursor:pointer;background:var(--card);color:inherit;border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+.toolbar a{text-decoration:none}
+.toolbar a[aria-current=page],.primary{background:var(--key);color:var(--on-key)}
 .entry{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:9px 0;padding:12px 14px;display:grid;gap:5px}
-.badge{justify-self:start;background:var(--soft);border-radius:30px;padding:2px 8px;font-size:12px}
 .detail{white-space:pre-wrap}
 .actions{margin-top:3px}
 form{display:grid;gap:8px;margin:4px 0}

@@ -27,7 +27,7 @@
     <button id="open" class="dock" type="button" aria-expanded="false"><span aria-hidden="true">Aa</span>随手收</button>
     <section id="panel" class="panel" hidden>
       <div class="head"><span class="name"><span class="sprig" aria-hidden="true">✦</span>随手收</span><div class="modes">
-        <button type="button" id="library" class="plain">我的收藏</button><button type="button" id="close" class="plain icon" aria-label="收起">×</button>
+        <button type="button" id="library" class="plain">单词收藏</button><button type="button" id="close" class="plain icon" aria-label="收起">×</button>
       </div></div>
       <div class="body">
         <div class="line"><div class="modes" role="group" aria-label="记录类型">
@@ -55,6 +55,7 @@
     input.setAttribute('aria-label', mode === 'word' ? '英文单词或短语' : '备忘内容');
     for (const button of shadow.querySelectorAll('[data-kind]')) button.setAttribute('aria-pressed', String(button.dataset.kind === mode));
     by('caption').hidden = mode !== 'word';
+    by('library').textContent = mode === 'note' ? '备忘收藏' : '单词收藏';
     status.textContent = hint();
     input.focus();
   }
@@ -83,9 +84,13 @@
   opener.addEventListener('pointerdown', event => { if (selection()) event.preventDefault(); });
   opener.addEventListener('click', () => open(selection()));
   by('close').addEventListener('click', close);
-  by('library').addEventListener('click', () => chrome.runtime.sendMessage({op:'openLibrary'}).catch(() => {
+  by('library').addEventListener('click', async () => {
+    try {
+      const result = await chrome.runtime.sendMessage({op:'openLibrary',kind:mode});
+      if (result?.ok) return;
+    } catch {}
     status.textContent = '无法打开收藏，请点击浏览器工具栏的扩展图标。';
-  }));
+  });
   for (const button of shadow.querySelectorAll('[data-kind]')) button.addEventListener('click', () => {if (!busy) setMode(button.dataset.kind);});
   by('caption').addEventListener('click', () => {
     if (busy) return;
@@ -116,8 +121,9 @@
     try {
       const result = await chrome.runtime.sendMessage({op:'save', kind:mode, text, context:mode === 'word' ? context : ''});
       if (!result?.ok) { status.textContent = result?.error || '没有保存成功，请重试。'; return; }
-      status.textContent = result.duplicate ? '这条已在收藏里' : mode === 'note' ? '已保存备忘' :
-        result.entry.meaning ? '已保存 · 已补中文释义' : result.enrich ? '已保存 · 正在补释义' : '已保存 · 可稍后补释义';
+      const collection = mode === 'note' ? '备忘收藏' : '单词收藏';
+      status.textContent = result.duplicate ? '这条已在' + collection : mode === 'note' ? '已存入备忘收藏' :
+        result.entry.meaning ? '已存入单词收藏 · 已补中文释义' : result.enrich ? '已存入单词收藏 · 正在补释义' : '已存入单词收藏';
       input.value = draft[mode] = '';
       if (mode === 'word') context = '';
     } catch {

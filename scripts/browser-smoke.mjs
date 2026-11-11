@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const files = new Map(await Promise.all(['sites.js','local.js','worker.js','lexicon.json','transfer.js','manifest.json'].map(async name =>
   [name, await readFile(new URL('../extension/'+name, import.meta.url), 'utf8')])));
 let listener, online = false;
-const stored = {}, desktop = [], nativeCalls = [];
+const stored = {}, desktop = [], nativeCalls = [], opened = [];
 const id = 'jhioomhdcaphdijkhegcbakheknicgdc';
 const extension = 'chrome-extension://'+id+'/';
 const env = vm.createContext({
@@ -28,10 +28,14 @@ const env = vm.createContext({
           desktop.push(...structuredClone(req.entries).map(x => ({...x,id:crypto.randomUUID()})));
           return {ok:true};
         }
-        if (req.op === 'list') return {ok:true, entries:desktop.slice().reverse().slice(req.offset,req.offset+100),total:desktop.length};
+        if (req.op === 'list') {
+          const selected = desktop.filter(entry => !req.kind || entry.kind === req.kind).reverse();
+          return {ok:true, entries:selected.slice(req.offset,req.offset+100),total:selected.length};
+        }
         throw Error('Unexpected native op: '+req.op);
       }
     },
+    tabs:{async create({url}) {opened.push(url);}},
     action:{onClicked:{addListener(){}}},
     commands:{onCommand:{addListener(){}}}
   }
@@ -50,6 +54,11 @@ const [word, note] = await Promise.all([
 ]);
 assert.match(word.entry.meaning,/爽快答应一个提议/);
 assert.equal(note.entry.meaning,'');
+assert.deepEqual(stored.entries.words.map(entry => entry.id),[word.entry.id]);
+assert.deepEqual(stored.entries.notes.map(entry => entry.id),[note.entry.id]);
+assert.equal((await call({op:'openLibrary',kind:'note'},page)).ok,true);
+assert.deepEqual(opened,[library+'#notes']);
+assert.equal((await call({op:'list',kind:'note'},library+'#notes')).entries[0].id,note.entry.id);
 assert.equal((await call({op:'list'})).total,2);
 assert.deepEqual(nativeCalls,[]);
 assert.doesNotMatch(JSON.stringify(stored),/for that|private subtitle/);
@@ -60,11 +69,12 @@ online=true;
 assert.equal((await call({op:'connect'})).mode,'desktop');
 assert.equal((await call({op:'list'})).total,2);
 assert.equal(desktop.find(x=>x.kind==='word').meaning,word.entry.meaning);
+assert.equal((await call({op:'export',kind:'word'})).entries.length,1);
 assert.equal((await call({op:'disconnect'})).mode,'browser');
 online=false;
 assert.equal((await call({op:'list'})).total,2);
 assert.equal((await call({op:'save',kind:'word',text:"I'm down!"},page)).duplicate,true);
-assert.equal((await call({op:'update',id:stored.entries[0].id,text:stored.entries[0].text,meaning:'口语释义'})).ok,true);
+assert.equal((await call({op:'update',id:stored.entries.words[0].id,text:stored.entries.words[0].text,meaning:'口语释义'})).ok,true);
 assert.match(JSON.stringify(stored),/口语释义/);
 vm.runInContext(files.get('transfer.js'),env,{filename:'transfer.js'});
 const exported = await call({op:'export'});
@@ -89,9 +99,12 @@ stored.entries = [{id:'old',kind:'word',text:'oldest expression',meaning:'最早
 const search = await call({op:'list',query:'最早',kind:'word'});
 assert.equal(search.total,1);
 assert.equal(search.entries[0].id,'old');
+assert.equal(stored.entries.words[0].id,'old');
+assert.equal(stored.entries.notes.length,105);
 assert.equal((await call({op:'list',kind:'note'})).total,105);
 assert.equal((await call({op:'list',kind:'note',offset:100})).entries.length,5);
 assert.equal((await call({op:'export'})).entries.length,106);
+assert.equal((await call({op:'export',kind:'note'})).entries.length,105);
 const manifest = JSON.parse(files.get('manifest.json'));
 const sites = manifest.content_scripts.flatMap(script => script.matches);
 assert.equal(sites.length,6);

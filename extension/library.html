@@ -2,33 +2,35 @@
 <html lang="zh-CN">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>我的收藏 · 随手收</title>
+<title>单词收藏 · 随手收</title>
 <link rel="stylesheet" href="library.css">
 <main>
-  <header><div class="mark" aria-hidden="true">Aa</div><div><h1>我的收藏</h1><p>随手收 · 保存在这台电脑</p></div></header>
+  <header><div class="mark" aria-hidden="true">Aa</div><div><h1 id="collection-title">单词收藏</h1><p>随手收 · 保存在这台电脑</p></div></header>
   <div class="connection">
     <p id="connection" class="details" role="status">正在读取保存位置…</p>
     <button type="button" id="bridge" hidden>连接 Windows 卡片</button>
   </div>
-  <div class="toolbar" aria-label="筛选收藏">
-    <button type="button" data-kind="all" aria-pressed="true">全部</button>
-    <button type="button" data-kind="word" aria-pressed="false">单词</button>
-    <button type="button" data-kind="note" aria-pressed="false">备忘</button>
+  <div class="toolbar">
+    <nav class="toolbar" aria-label="收藏">
+      <a href="#words" data-kind="word" aria-current="page">单词收藏</a>
+      <a href="#notes" data-kind="note">备忘收藏</a>
+    </nav>
     <button type="button" id="refresh">刷新</button>
   </div>
   <p id="status" role="status">正在读取收藏…</p>
   <form id="search-form" class="search">
-    <input type="search" id="search" maxlength="120" aria-label="搜索所有收藏" placeholder="搜索单词、释义或备忘">
+    <input type="search" id="search" maxlength="120" aria-label="搜索单词收藏" placeholder="搜索单词或释义">
     <button type="submit">搜索</button>
   </form>
   <details class="transfer"><summary>备份与导出</summary>
     <div class="actions">
-      <button type="button" id="backup">备份全部收藏</button>
+      <button type="button" id="backup">备份当前收藏</button>
+      <button type="button" id="backup-all">备份两个收藏</button>
       <button type="button" id="restore">合并导入备份</button>
       <button type="button" id="anki">导出单词到 Anki</button>
       <input type="file" id="import-file" accept=".json,application/json" hidden>
     </div>
-    <p class="details">JSON 备份包含单词和备忘。Anki 导出包含有释义的单词。</p>
+    <p class="details">导入 JSON 备份时，记录会按类型放入对应的收藏。</p>
   </details>
   <div id="entries"></div>
   <button type="button" id="more" hidden>加载更多</button>

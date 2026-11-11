@@ -21,6 +21,11 @@ namespace PhrasePocket {
         public string reviewedAt { get; set; }
     }
 
+    internal sealed class StoredCollections {
+        public List<Entry> words { get; set; }
+        public List<Entry> notes { get; set; }
+    }
+
     public sealed class Settings {
         public string display { get; set; }
         public bool showMeaning { get; set; }
@@ -50,7 +55,8 @@ namespace PhrasePocket {
         internal static readonly string Home = Path.GetFullPath(
             Environment.GetEnvironmentVariable("PHRASE_POCKET_HOME") ??
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PhrasePocket"));
-        internal static readonly string EntriesPath = Path.Combine(Home, "entries.json");
+        internal static readonly string EntriesPath = Path.Combine(Home, "collections.json");
+        private static readonly string LegacyEntriesPath = Path.Combine(Home, "entries.json");
         internal static readonly string SettingsPath = Path.Combine(Home, "settings.json");
         internal static readonly string DictionaryPath = Path.Combine(Home, "ecdict.db");
         internal static readonly string LockSuffix = Fingerprint(Home.ToUpperInvariant()).Substring(0, 24);
@@ -87,18 +93,38 @@ namespace PhrasePocket {
                 if (File.Exists(temp)) File.Delete(temp);
             }
         }
+        private static void WriteCollections(List<Entry> entries) {
+            if (entries.Any(x => x == null || (x.kind != "word" && x.kind != "note")))
+                throw new IOException("Invalid collection entry.");
+            Write(EntriesPath, new StoredCollections {
+                words = entries.Where(x => x.kind == "word").ToList(),
+                notes = entries.Where(x => x.kind == "note").ToList()
+            });
+        }
+        private static List<Entry> ReadCollections(out bool needsMigration) {
+            needsMigration = false;
+            if (File.Exists(EntriesPath)) {
+                var stored = Json().Deserialize<StoredCollections>(File.ReadAllText(EntriesPath, Utf8));
+                if (stored == null || stored.words == null || stored.notes == null)
+                    throw new IOException("Invalid collections.");
+                return stored.words.Concat(stored.notes).OrderBy(x => x.createdAt, StringComparer.Ordinal).ToList();
+            }
+            if (!File.Exists(LegacyEntriesPath)) return new List<Entry>();
+            var legacy = Json().Deserialize<List<Entry>>(File.ReadAllText(LegacyEntriesPath, Utf8));
+            if (legacy == null) throw new IOException("Invalid collection.");
+            needsMigration = true;
+            return legacy;
+        }
         internal static T Entries<T>(Func<List<Entry>,T> work, bool save) {
             using (var gate = new Mutex(false, @"Local\PhrasePocket-Data-" + LockSuffix)) {
                 try {
                     if (!gate.WaitOne(6000)) throw new IOException("Collection is busy.");
                 } catch (AbandonedMutexException) { }
                 try {
-                    var entries = File.Exists(EntriesPath)
-                        ? Json().Deserialize<List<Entry>>(File.ReadAllText(EntriesPath, Utf8))
-                        : new List<Entry>();
-                    if (entries == null) throw new IOException("Invalid collection.");
+                    bool needsMigration;
+                    var entries = ReadCollections(out needsMigration);
                     T result = work(entries);
-                    if (save) Write(EntriesPath, entries);
+                    if (save || needsMigration) WriteCollections(entries);
                     return result;
                 } finally { gate.ReleaseMutex(); }
             }

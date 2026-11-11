@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
@@ -54,6 +54,20 @@ async function call(data) {
 try {
   assert.deepEqual(await call({op:'ping'}), {ok:true, version:1});
   assert.equal((await invoke(['chrome-extension://' + 'a'.repeat(32) + '/'], frame({op:'ping'}))).code, 2);
+  const legacy = [
+    {id:'legacy-note',kind:'note',text:'旧备忘'},
+    {id:'legacy-word',kind:'word',text:'legacy word',meaning:'旧释义',source:'manual',review:'known'}
+  ];
+  await mkdir(home);
+  await writeFile(path.join(home,'entries.json'),JSON.stringify(legacy));
+  assert.equal((await call({op:'list',kind:'word'})).entries[0].meaning,'旧释义');
+  assert.equal((await call({op:'list',kind:'note'})).entries[0].id,'legacy-note');
+  const migratedCollections = JSON.parse(await readFile(path.join(home,'collections.json'),'utf8'));
+  assert.equal(migratedCollections.words[0].review,'known');
+  assert.equal(migratedCollections.notes[0].text,'旧备忘');
+  assert.deepEqual(JSON.parse(await readFile(path.join(home,'entries.json'),'utf8')),legacy);
+  await call({op:'delete',id:'legacy-word'});
+  await call({op:'delete',id:'legacy-note'});
   const word = await call({op:'save', kind:'word', text:'I’m down', context:'Yeah, I’m down for that.'});
   assert.equal(word.ok, true);
   assert.match(word.entry.meaning, /答应一个提议/);
@@ -77,8 +91,11 @@ try {
   const revised = await call({op:'update', id:word.entry.id, text:'I’m down', meaning:'好啊，算我一个。'});
   assert.equal(revised.entry.source, 'manual');
   assert.equal((await call({op:'list'})).entries.find(x => x.id === word.entry.id).meaning, revised.entry.meaning);
-  const raw = await readFile(path.join(home, 'entries.json'), 'utf8');
+  const raw = await readFile(path.join(home, 'collections.json'), 'utf8');
   assert.doesNotMatch(raw, /for that|not collected|https:\/\/|videoId/);
+  const collections = JSON.parse(raw);
+  assert.equal(collections.words.length,2);
+  assert.equal(collections.notes.length,1);
 
   const simultaneous = await Promise.all(Array.from({length:6}, (_,i) => call({op:'save', kind:'note', text:'并行记录 '+i})));
   assert.ok(simultaneous.every(x => x.ok));

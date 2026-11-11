@@ -27,7 +27,9 @@ function failed(error) {
 }
 
 async function route(request) {
-  const {mode, entries} = await chrome.storage.local.get({mode:'browser', entries:[]});
+  const {mode, entries:stored} = await chrome.storage.local.get({mode:'browser', entries:{words:[], notes:[]}});
+  const entries = LocalPocket.unpack(stored);
+  if (Array.isArray(stored)) await LocalPocket.store(entries);
   if (request.op === 'import' && request.expectedMode !== mode) return {ok:false, code:'mode_changed'};
   if (request.op === 'connection') return {ok:true, mode};
   if (request.op === 'connect') {
@@ -43,12 +45,15 @@ async function route(request) {
     return {ok:true, mode:'desktop'};
   }
   if (request.op === 'disconnect' || request.op === 'export') {
-    if (request.op === 'export' && mode !== 'desktop') return {ok:true, entries};
+    const kind = request.op === 'export' ? request.kind : undefined;
+    if (request.op === 'export' && mode !== 'desktop') {
+      return {ok:true, entries:kind ? entries.filter(entry => entry.kind === kind) : entries};
+    }
     if (mode === 'browser') return {ok:true, mode};
     const copied = [];
     let expected;
     do {
-      const page = await send({op:'list', offset:copied.length});
+      const page = await send({op:'list', offset:copied.length, kind});
       if (!page?.ok || !Array.isArray(page.entries)) return {ok:false, code:page?.code || 'storage'};
       expected ??= page.total;
       if (page.total !== expected || (!page.entries.length && copied.length < expected)) return {ok:false, code:'storage'};
@@ -56,7 +61,7 @@ async function route(request) {
     } while (copied.length < expected);
     if (new Set(copied.map(x => x.id)).size !== expected) return {ok:false, code:'storage'};
     if (request.op === 'export') return {ok:true, entries:copied.reverse()};
-    await chrome.storage.local.set({mode:'browser', entries:copied.reverse()});
+    await LocalPocket.store(copied.reverse(), {mode:'browser'});
     return {ok:true, mode:'browser'};
   }
   return mode === 'desktop' ? send(request) : LocalPocket.handle(request,entries);
@@ -65,11 +70,13 @@ async function route(request) {
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || !message || typeof message !== 'object') return;
   const page = !!globalThis.phrasePocketSite(sender.url);
-  const library = sender.url === chrome.runtime.getURL('library.html');
+  const libraryUrl = chrome.runtime.getURL('library.html');
+  const library = [libraryUrl, libraryUrl+'#words', libraryUrl+'#notes'].includes(sender.url);
   if ((!page || !['save', 'openLibrary'].includes(message.op)) &&
       (!library || !['list', 'update', 'delete', 'retry', 'connection', 'connect', 'disconnect', 'export', 'import'].includes(message.op))) return;
   if (message.op === 'openLibrary') {
-    chrome.runtime.openOptionsPage().then(() => respond({ok:true}), () => respond({ok:false}));
+    const section = message.kind === 'note' ? '#notes' : '#words';
+    chrome.tabs.create({url:libraryUrl+section}).then(() => respond({ok:true}), () => respond({ok:false}));
     return true;
   }
   let request;
@@ -89,7 +96,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   } else {
     request = {op:message.op, id:message.id,
       offset:message.op === 'list' && Number.isInteger(message.offset) ? message.offset : 0,
-      kind:message.op === 'list' ? message.kind : undefined,
+      kind:['list','export'].includes(message.op) && ['word','note'].includes(message.kind) ? message.kind : undefined,
       query:message.op === 'list' ? message.query : undefined};
   }
   serialize(() => route(request)).then(result => {

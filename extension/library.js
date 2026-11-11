@@ -1,6 +1,6 @@
 const entries = document.getElementById('entries');
 const status = document.getElementById('status');
-let data = [], filter = 'all', editing = null, total = 0, loading = false;
+let data = [], collection = 'word', editing = null, total = 0, loading = false;
 let requestVersion = 0, searchText = '', transferring = false;
 const more = document.getElementById('more');
 const bridge = document.getElementById('bridge');
@@ -66,10 +66,9 @@ function render() {
   entries.replaceChildren();
   more.hidden = data.length >= total;
   status.textContent = total ? '已显示 ' + data.length + ' / ' + total + ' 条' :
-    searchText || filter !== 'all' ? '没有找到匹配的收藏。' : '这里还没有收藏。在视频网页记下第一条吧。';
+    searchText ? '没有找到匹配的收藏。' : collection === 'note' ? '还没有备忘。' : '还没有单词。';
   for (const entry of data) {
     const row = make('article', null, 'entry');
-    row.append(make('span', entry.kind === 'word' ? '单词' : '备忘', 'badge'));
     if (editing === entry.id) row.append(editor(entry));
     else {
       row.append(make('h2', entry.text));
@@ -93,7 +92,7 @@ async function load(append = false) {
   loading = true;
   more.disabled = true;
   try {
-    const result = await send({op:'list', offset:append ? data.length : 0,kind:filter,query:searchText});
+    const result = await send({op:'list', offset:append ? data.length : 0,kind:collection,query:searchText});
     if (version !== requestVersion) return;
     if (!result?.ok) {status.textContent = result?.error || '无法读取收藏。'; return;}
     data = append ? [...data, ...result.entries] : result.entries;
@@ -156,13 +155,29 @@ bridge.addEventListener('click', async () => {
   } catch {connection.textContent = '没有切换成功，原收藏仍在。';}
   finally {bridge.disabled = false;}
 });
-for (const node of document.querySelectorAll('[data-kind]')) node.addEventListener('click', () => {
-  filter = node.dataset.kind;
+function openCollection() {
+  collection = location.hash === '#notes' ? 'note' : 'word';
+  const name = collection === 'note' ? '备忘收藏' : '单词收藏';
+  document.getElementById('collection-title').textContent = name;
+  document.title = name + ' · 随手收';
+  search.placeholder = collection === 'note' ? '搜索备忘' : '搜索单词或释义';
+  search.setAttribute('aria-label','搜索' + name);
+  searchText = search.value = '';
   editing = null;
-  for (const sibling of document.querySelectorAll('[data-kind]')) sibling.setAttribute('aria-pressed',String(sibling === node));
+  data = [];
+  total = 0;
+  entries.replaceChildren();
+  more.hidden = true;
+  status.textContent = '正在读取' + name + '…';
+  for (const link of document.querySelectorAll('[data-kind]')) {
+    if (link.dataset.kind === collection) link.setAttribute('aria-current','page');
+    else link.removeAttribute('aria-current');
+  }
+  document.getElementById('anki').hidden = collection === 'note';
   load();
-});
-const transferButtons = ['backup','restore','anki'].map(id => document.getElementById(id));
+}
+window.addEventListener('hashchange',openCollection);
+const transferButtons = ['backup','backup-all','restore','anki'].map(id => document.getElementById(id));
 const fileInput = document.getElementById('import-file');
 function setTransfer(active) {
   transferring = active;
@@ -177,11 +192,11 @@ function download(text, type, name) {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url),1000);
 }
-async function exportCollection(anki) {
+async function exportCollection(anki, kind) {
   if (transferring) return;
   setTransfer(true);
   try {
-    const result = await send({op:'export'});
+    const result = await send({op:'export',kind});
     if (!result?.ok) throw Error(result?.error || '无法读取完整收藏。');
     if (anki) {
       const exported = PocketTransfer.anki(result.entries);
@@ -189,14 +204,16 @@ async function exportCollection(anki) {
       download(exported.text,'text/tab-separated-values;charset=utf-8','phrase-pocket-anki.tsv');
       status.textContent = '已导出 ' + exported.count + ' 条带释义的单词。';
     } else {
-      download(PocketTransfer.backup(result.entries),'application/json;charset=utf-8','phrase-pocket-backup.json');
-      status.textContent = '已备份全部 ' + result.entries.length + ' 条收藏。';
+      const file = kind === 'word' ? 'words' : kind === 'note' ? 'notes' : 'backup';
+      download(PocketTransfer.backup(result.entries),'application/json;charset=utf-8','phrase-pocket-' + file + '.json');
+      status.textContent = '已备份 ' + result.entries.length + ' 条记录。';
     }
   } catch (error) {status.textContent = error.message;}
   finally {setTransfer(false);}
 }
-document.getElementById('backup').addEventListener('click', () => exportCollection(false));
-document.getElementById('anki').addEventListener('click', () => exportCollection(true));
+document.getElementById('backup').addEventListener('click', () => exportCollection(false, collection));
+document.getElementById('backup-all').addEventListener('click', () => exportCollection(false));
+document.getElementById('anki').addEventListener('click', () => exportCollection(true, 'word'));
 document.getElementById('restore').addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', async () => {
   const file = fileInput.files[0];
@@ -225,4 +242,4 @@ fileInput.addEventListener('change', async () => {
 send({op:'connection'}).then(result => {
   if (result?.ok) { mode = result.mode; showConnection(); }
 }, () => { connection.textContent = '无法读取保存位置。'; });
-load();
+openCollection();
