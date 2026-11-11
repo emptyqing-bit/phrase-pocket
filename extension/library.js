@@ -66,7 +66,7 @@ function render() {
   entries.replaceChildren();
   more.hidden = data.length >= total;
   status.textContent = total ? '已显示 ' + data.length + ' / ' + total + ' 条' :
-    searchText || filter !== 'all' ? '没有找到匹配的收藏。' : '这里还没有收藏。去 TikTok 记下第一条吧。';
+    searchText || filter !== 'all' ? '没有找到匹配的收藏。' : '这里还没有收藏。在视频网页记下第一条吧。';
   for (const entry of data) {
     const row = make('article', null, 'entry');
     row.append(make('span', entry.kind === 'word' ? '单词' : '备忘', 'badge'));

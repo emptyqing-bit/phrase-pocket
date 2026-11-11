@@ -1,4 +1,4 @@
-importScripts('local.js');
+importScripts('sites.js', 'local.js');
 
 const HOST = 'com.phrasepocket.desktop';
 const send = message => chrome.runtime.sendNativeMessage(HOST, message);
@@ -64,8 +64,7 @@ async function route(request) {
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || !message || typeof message !== 'object') return;
-  const origin = sender.url ? new URL(sender.url).origin : '';
-  const page = origin === 'https://www.tiktok.com' || origin === 'https://tiktok.com';
+  const page = !!globalThis.phrasePocketSite(sender.url);
   const library = sender.url === chrome.runtime.getURL('library.html');
   if ((!page || !['save', 'openLibrary'].includes(message.op)) &&
       (!library || !['list', 'update', 'delete', 'retry', 'connection', 'connect', 'disconnect', 'export', 'import'].includes(message.op))) return;

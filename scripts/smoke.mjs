@@ -140,14 +140,18 @@ try {
   }
 
   const captions = await readFile(path.join(root,'extension','captions.js'), 'utf8');
+  const sites = await readFile(path.join(root,'extension','sites.js'), 'utf8');
   const box = (left, top, right, bottom) => ({getBoundingClientRect:() => ({left, top, right, bottom})});
   const hidden = {...box(0,800,300,1400), paused:false, readyState:4,
     textTracks:[{kind:'captions', mode:'showing', language:'en', activeCues:[{text:'Old caption'}]}]};
   const video = {...box(10,10,310,580), paused:false, readyState:4,
     textTracks:[{kind:'captions', mode:'showing', language:'en-US', activeCues:[{text:'<i>Current caption</i>'}]}]};
   const env = {document:{querySelectorAll:() => [hidden,video]},
-    getComputedStyle:() => ({visibility:'visible', display:'block', opacity:'1'}), innerWidth:700, innerHeight:600};
-  vm.runInNewContext(captions, env);
+    getComputedStyle:element => ({visibility:'visible', display:'block', opacity:element.hidden ? '0' : '1'}),
+    innerWidth:700, innerHeight:600, URL, location:{href:'https://www.tiktok.com/foryou'}};
+  vm.createContext(env);
+  vm.runInContext(sites, env);
+  vm.runInContext(captions, env);
   assert.equal(env.phrasePocketCaptions.read(), 'Current caption');
   video.textTracks = [{kind:'captions', mode:'showing', language:'zh', activeCues:[{text:'不采集非英文字幕'}]}];
   assert.equal(env.phrasePocketCaptions.read(), '');
@@ -156,6 +160,22 @@ try {
   assert.equal(env.phrasePocketCaptions.read(), 'Readable overlay');
   video.parentElement.querySelectorAll = selector => selector === 'video' ? [video, hidden] : [overlay];
   assert.equal(env.phrasePocketCaptions.read(), '');
+  env.location.href = 'https://www.bilibili.com/video/BV1example';
+  const english = {...box(30,520,290,555), innerText:'一条中文\nOne English CC line'};
+  const stale = {...box(30,600,290,650), innerText:'Offscreen CC'};
+  const bilibili = {...box(10,10,310,580),querySelectorAll:selector => {
+    if (selector === 'video') return [];
+    assert.match(selector,/bpx-player-subtitle-panel-text/);
+    return [english, stale];
+  }};
+  env.document.querySelectorAll = selector => selector === 'video' ? [video,hidden] : [bilibili];
+  assert.equal(env.phrasePocketCaptions.read(), 'One English CC line');
+  english.hidden = true;
+  assert.equal(env.phrasePocketCaptions.read(), '');
+  env.location.href = 'https://www.douyin.com/video/123';
+  assert.equal(env.phrasePocketCaptions.read(), '');
+  video.textTracks = [{kind:'captions',mode:'showing',language:'en',activeCues:[{text:'A Douyin text track.'}]}];
+  assert.equal(env.phrasePocketCaptions.read(), 'A Douyin text track.');
   console.log('Passed: browser framing, records, concurrent writes, ECDICT import, edits, privacy, caption fallbacks' +
     (process.argv.includes('--ui') ? ', and desktop window creation.' : '.'));
 } finally {

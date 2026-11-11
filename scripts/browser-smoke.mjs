@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
-const files = new Map(await Promise.all(['local.js','worker.js','lexicon.json','transfer.js'].map(async name =>
+const files = new Map(await Promise.all(['sites.js','local.js','worker.js','lexicon.json','transfer.js','manifest.json'].map(async name =>
   [name, await readFile(new URL('../extension/'+name, import.meta.url), 'utf8')])));
 let listener, online = false;
 const stored = {}, desktop = [], nativeCalls = [];
@@ -36,7 +36,7 @@ const env = vm.createContext({
     commands:{onCommand:{addListener(){}}}
   }
 });
-env.importScripts = name => vm.runInContext(files.get(name),env,{filename:name});
+env.importScripts = (...names) => names.forEach(name => vm.runInContext(files.get(name),env,{filename:name}));
 vm.runInContext(files.get('worker.js'),env,{filename:'worker.js'});
 const page = 'https://www.tiktok.com/foryou';
 const library = extension+'library.html';
@@ -92,5 +92,17 @@ assert.equal(search.entries[0].id,'old');
 assert.equal((await call({op:'list',kind:'note'})).total,105);
 assert.equal((await call({op:'list',kind:'note',offset:100})).entries.length,5);
 assert.equal((await call({op:'export'})).entries.length,106);
+const manifest = JSON.parse(files.get('manifest.json'));
+const sites = manifest.content_scripts.flatMap(script => script.matches);
+assert.equal(sites.length,6);
+for (const site of sites) {
+  const url = site.replace('*','video/123');
+  assert.equal((await call({op:'save',kind:'note',text:url},url)).ok,true);
+}
+for (const url of ['https://www.douyin.com.example.org/video/1','http://www.bilibili.com/video/1','https://api.tiktok.com/video/1']) {
+  assert.equal(listener({op:'save',kind:'note',text:'untrusted'},{id,url},() => assert.fail()),undefined);
+}
+assert.equal(listener({op:'export'},{id,url:'https://www.douyin.com/video/1'},() => assert.fail()),undefined);
+console.log('Passed: collection capture on all six supported hosts and rejection of unrelated hosts.');
 console.log('Passed: whole-library search, backup round-trip, merge deduplication, import-mode check and Anki text escaping.');
 console.log('Passed: browser-only capture, two concurrent saves, no subtitle history, optional desktop connection and disconnect.');
