@@ -20,3 +20,6 @@ button,.toolbar a{cursor:pointer;background:var(--card);color:inherit;border:1px
 form{display:grid;gap:8px;margin:4px 0}
 label{display:grid;gap:3px;color:var(--dim);font-size:13px}
 input,textarea{width:100%;padding:7px 9px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px}
+#review-panel{display:block;margin:14px 0}
+#review-panel h2{font-size:24px;margin:6px 0}
+#review-panel .actions{margin-top:10px}

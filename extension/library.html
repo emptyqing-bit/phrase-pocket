@@ -16,7 +16,20 @@
       <a href="#notes" data-kind="note">备忘收藏</a>
     </nav>
     <button type="button" id="refresh">刷新</button>
+    <button type="button" id="review" hidden>复习单词</button>
   </div>
+  <section id="review-panel" class="entry" hidden>
+    <p id="review-status" class="details" role="status"></p>
+    <h2 id="review-text"></h2>
+    <p id="review-meaning" class="detail" hidden></p>
+    <div class="actions">
+      <button type="button" id="review-show">显示释义</button>
+      <button type="button" id="review-known" class="primary" hidden>认识</button>
+      <button type="button" id="review-again" hidden>不认识</button>
+      <button type="button" id="review-speak">朗读</button>
+      <button type="button" id="review-end">结束复习</button>
+    </div>
+  </section>
   <p id="status" role="status">正在读取收藏…</p>
   <form id="search-form" class="search">
     <input type="search" id="search" maxlength="120" aria-label="搜索单词收藏" placeholder="搜索单词或释义">

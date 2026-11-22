@@ -131,6 +131,7 @@ function showConnection() {
   connection.textContent = mode === 'desktop' ? '保存位置：Windows 桌面收藏' : '保存位置：此浏览器 · 无需安装桌面程序';
   bridge.textContent = mode === 'desktop' ? '复制到浏览器并断开' : '连接 Windows 卡片';
   bridge.hidden = false;
+  document.getElementById('review').hidden = collection === 'note' || mode === 'desktop';
 }
 bridge.addEventListener('click', async () => {
   bridge.disabled = true;
@@ -174,6 +175,8 @@ function openCollection() {
     else link.removeAttribute('aria-current');
   }
   document.getElementById('anki').hidden = collection === 'note';
+  document.getElementById('review').hidden = collection === 'note' || mode === 'desktop';
+  endReview();
   load();
 }
 window.addEventListener('hashchange',openCollection);
@@ -242,4 +245,73 @@ fileInput.addEventListener('change', async () => {
 send({op:'connection'}).then(result => {
   if (result?.ok) { mode = result.mode; showConnection(); }
 }, () => { connection.textContent = '无法读取保存位置。'; });
+
+// ---- Flashcard review (browser mode; uses the existing review/reviewedAt fields) ----
+const reviewPanel = document.getElementById('review-panel');
+const reviewText = document.getElementById('review-text');
+const reviewMeaning = document.getElementById('review-meaning');
+const reviewStatus = document.getElementById('review-status');
+let reviewList = [], reviewIndex = 0, reviewActive = false;
+
+function endReview() {
+  reviewActive = false;
+  reviewPanel.hidden = true;
+}
+function renderReview() {
+  if (reviewIndex >= reviewList.length) {
+    reviewText.textContent = '本轮复习完成！';
+    reviewMeaning.hidden = true;
+    reviewStatus.textContent = '共复习 ' + reviewList.length + ' 条单词。';
+    document.getElementById('review-show').hidden = true;
+    document.getElementById('review-known').hidden = true;
+    document.getElementById('review-again').hidden = true;
+    document.getElementById('review-speak').hidden = true;
+    return;
+  }
+  const entry = reviewList[reviewIndex];
+  reviewText.textContent = entry.text;
+  reviewMeaning.textContent = entry.meaning || '暂无释义，可以在收藏里补一下。';
+  reviewMeaning.hidden = true;
+  reviewStatus.textContent = '第 ' + (reviewIndex + 1) + ' / ' + reviewList.length + ' 条';
+  document.getElementById('review-show').hidden = false;
+  document.getElementById('review-known').hidden = true;
+  document.getElementById('review-again').hidden = true;
+}
+async function startReview() {
+  if (mode !== 'browser') return;
+  reviewStatus.textContent = '正在准备复习…';
+  reviewPanel.hidden = false;
+  const result = await send({op:'export', kind:'word'});
+  if (!result?.ok || !result.entries.length) {
+    reviewText.textContent = '还没有可复习的单词。';
+    reviewStatus.textContent = '先在视频页或收藏里添加一些单词吧。';
+    return;
+  }
+  reviewList = result.entries.sort(() => Math.random() - 0.5);
+  reviewIndex = 0;
+  reviewActive = true;
+  renderReview();
+}
+async function gradeReview(verdict) {
+  const entry = reviewList[reviewIndex];
+  if (!entry) return;
+  const result = await send({op:'review', id:entry.id, verdict});
+  if (!result?.ok) { reviewStatus.textContent = result?.error || '记录复习结果失败，请重试。'; return; }
+  reviewIndex++;
+  renderReview();
+}
+document.getElementById('review').addEventListener('click', startReview);
+document.getElementById('review-show').addEventListener('click', () => {
+  reviewMeaning.hidden = false;
+  document.getElementById('review-show').hidden = true;
+  document.getElementById('review-known').hidden = false;
+  document.getElementById('review-again').hidden = false;
+});
+document.getElementById('review-known').addEventListener('click', () => gradeReview('known'));
+document.getElementById('review-again').addEventListener('click', () => gradeReview('again'));
+document.getElementById('review-speak').addEventListener('click', () => {
+  const entry = reviewList[reviewIndex];
+  if (entry) speak(entry.text);
+});
+document.getElementById('review-end').addEventListener('click', () => { endReview(); load(); });
 openCollection();
