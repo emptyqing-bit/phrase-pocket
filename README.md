@@ -2,6 +2,8 @@
 
 [English README](README.en.md)
 
+[下载 v0.7.1 浏览器扩展与 Windows 安装包](https://github.com/emptyqing-bit/phrase-pocket/releases/tag/v0.7.1)。此版本修复了跨端导入、导出收藏时丢失安卓复习计划的问题。
+
 刷 TikTok、哔哩哔哩和抖音网页版时，记下想学的英文表达、种草信息或随手备忘。Chrome / Edge 扩展可以独立使用；连接可选的 Windows 组件后，桌面角落也能轮换显示收藏。
 
 **v0.7.0 新增**：单词收藏页支持"复习单词"闪卡复习（显示释义后标记认识/不认识，复习状态随收藏保存，浏览器模式下可用）；JSON 备份与 Android 版互通，可跨端合并去重。

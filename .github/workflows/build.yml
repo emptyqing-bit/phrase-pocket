@@ -33,3 +33,27 @@ jobs:
           name: phrase-pocket
           path: build/PhrasePocket-*.zip
           if-no-files-found: error
+
+  release:
+    needs: windows
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Release v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: phrase-pocket
+          path: packages
+      - name: Publish tested packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(jq -er '.version' extension/manifest.json)
+          test "$(git log -1 --format=%s)" = "Release v$version"
+          gh release create "v$version" --target "$GITHUB_SHA" --title "随手收 v$version" \
+            --notes-file "releases/v$version.md" \
+            "packages/PhrasePocket-Extension-$version.zip" "packages/PhrasePocket-Windows-$version.zip"
