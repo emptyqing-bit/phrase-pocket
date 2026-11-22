@@ -85,6 +85,13 @@ assert.equal(restored.find(entry => entry.kind === 'note').text,'周末逛市集
 assert.equal((await call({op:'import',expectedMode:'desktop',entries:restored})).ok,false);
 assert.equal((await call({op:'import',expectedMode:'browser',entries:restored})).ok,true);
 assert.equal((await call({op:'list'})).total,2);
+const androidSchedule = {nextReviewAt:1796000000000, intervalDays:12, reviewCount:5, easeFactor:2.6};
+const androidBackup = JSON.stringify([{kind:'word', text:'on the fence', meaning:'犹豫不决', ...androidSchedule}]);
+const phoneEntries = env.PocketTransfer.parseBackup(androidBackup);
+assert.equal((await call({op:'import', expectedMode:'browser', entries:phoneEntries})).ok, true);
+const phoneRoundTrip = JSON.parse(env.PocketTransfer.backup((await call({op:'export'})).entries));
+const phoneWord = phoneRoundTrip.entries.find(entry => entry.text === 'on the fence');
+for (const [key, value] of Object.entries(androidSchedule)) assert.equal(phoneWord[key], value);
 const anki = env.PocketTransfer.anki([
   {kind:'word',text:'a "quoted"\tterm',meaning:'中文\n释义'},
   {kind:'note',text:'备忘',meaning:'不可导入词卡'},

@@ -1,4 +1,12 @@
 globalThis.PocketTransfer = (() => {
+  function schedule(entry) {
+    if (entry?.kind !== 'word' || !Number.isSafeInteger(entry.nextReviewAt) || entry.nextReviewAt < 0 ||
+        !Number.isInteger(entry.intervalDays) || entry.intervalDays < 0 || entry.intervalDays > 2147483647 ||
+        !Number.isInteger(entry.reviewCount) || entry.reviewCount < 0 || entry.reviewCount > 2147483647 ||
+        !Number.isFinite(entry.easeFactor) || entry.easeFactor <= 0 || entry.easeFactor > 3.4028234e38) return {};
+    return {nextReviewAt:entry.nextReviewAt, intervalDays:entry.intervalDays,
+      reviewCount:entry.reviewCount, easeFactor:entry.easeFactor};
+  }
   function records(entries) {
     if (!Array.isArray(entries)) throw Error('备份中的收藏列表格式不正确。');
     return entries.map(entry => {
@@ -10,7 +18,7 @@ globalThis.PocketTransfer = (() => {
       if (entry.kind === 'word' && !entry.text.normalize('NFKC').replace(/[.!?…\s]/g,'')) {
         throw Error('备份中有空白单词，尚未开始导入。');
       }
-      return {kind:entry.kind, text:entry.text, meaning:entry.kind === 'word' ? entry.meaning || '' : '',
+      return {...schedule(entry), kind:entry.kind, text:entry.text, meaning:entry.kind === 'word' ? entry.meaning || '' : '',
         source:['builtin','ecdict','model','manual'].includes(entry.source) ? entry.source : 'manual',
         createdAt:typeof entry.createdAt === 'string' ? entry.createdAt : undefined,
         review:['known','again'].includes(entry.review) ? entry.review : undefined,
@@ -38,5 +46,5 @@ globalThis.PocketTransfer = (() => {
     const lines = selected.map(entry => quote(entry.text) + '\t' + quote(entry.meaning));
     return {count:selected.length,text:'#separator:Tab\n#html:false\n#columns:英文\t中文释义\n' + lines.join('\n')};
   }
-  return {parseBackup,backup,anki};
+  return {parseBackup,backup,anki,schedule};
 })();

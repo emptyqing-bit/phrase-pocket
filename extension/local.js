@@ -101,13 +101,14 @@ const LocalPocket = (() => {
           const source = ['builtin','ecdict','model'].includes(value.source) ? value.source : 'manual';
           const previous = entries.find(entry => entry.kind === value.kind && match(value.kind,entry.text,text));
           if (previous) {
+            if (previous.nextReviewAt == null) Object.assign(previous, PocketTransfer.schedule(value));
             if (meaning && (!previous.meaning || (source === 'manual' && previous.source !== 'manual'))) {
               previous.meaning = meaning;
               previous.source = source;
             }
             continue;
           }
-          const entry = {id:crypto.randomUUID(), kind:value.kind, text, meaning, source:meaning ? source : '',
+          const entry = {...PocketTransfer.schedule(value), id:crypto.randomUUID(), kind:value.kind, text, meaning, source:meaning ? source : '',
             createdAt:Number.isFinite(Date.parse(value.createdAt)) ? new Date(value.createdAt).toISOString() : new Date().toISOString()};
           if (entry.kind === 'word' && !meaning) {
             entry.meaning = await define(text,'');
