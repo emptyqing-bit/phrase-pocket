@@ -73,7 +73,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const libraryUrl = chrome.runtime.getURL('library.html');
   const library = [libraryUrl, libraryUrl+'#words', libraryUrl+'#notes'].includes(sender.url);
   if ((!page || !['save', 'openLibrary'].includes(message.op)) &&
-      (!library || !['list', 'update', 'delete', 'retry', 'connection', 'connect', 'disconnect', 'export', 'import'].includes(message.op))) return;
+      (!library || !['list', 'update', 'delete', 'retry', 'review', 'connection', 'connect', 'disconnect', 'export', 'import'].includes(message.op))) return;
   if (message.op === 'openLibrary') {
     const section = message.kind === 'note' ? '#notes' : '#words';
     chrome.tabs.create({url:libraryUrl+section}).then(() => respond({ok:true}), () => respond({ok:false}));
@@ -95,6 +95,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     }))};
   } else {
     request = {op:message.op, id:message.id,
+      verdict:message.op === 'review' ? message.verdict : undefined,
       offset:message.op === 'list' && Number.isInteger(message.offset) ? message.offset : 0,
       kind:['list','export'].includes(message.op) && ['word','note'].includes(message.kind) ? message.kind : undefined,
       query:message.op === 'list' ? message.query : undefined};

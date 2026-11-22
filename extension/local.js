@@ -78,6 +78,13 @@ const LocalPocket = (() => {
         }
         return commit({ok:true, entry:existing});
       }
+      case 'review': {
+        if (!existing || existing.kind !== 'word') return {ok:false, code:'not_found'};
+        if (!['known','again'].includes(request.verdict)) return bad;
+        existing.review = request.verdict;
+        existing.reviewedAt = new Date().toISOString();
+        return commit({ok:true, entry:existing});
+      }
       case 'delete':
         if (!existing) return {ok:false, code:'not_found'};
         entries.splice(entries.indexOf(existing),1);
