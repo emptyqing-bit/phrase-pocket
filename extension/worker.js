@@ -1,4 +1,4 @@
-importScripts('sites.js', 'local.js');
+importScripts('sites.js', 'transfer.js', 'local.js');
 
 const HOST = 'com.phrasepocket.desktop';
 const send = message => chrome.runtime.sendNativeMessage(HOST, message);
@@ -36,8 +36,11 @@ async function route(request) {
     if (mode === 'desktop') return {ok:true, mode};
     if (!(await send({op:'ping'}))?.ok) return {ok:false, code:'storage'};
     for (let i = 0; i < entries.length; i += 4) {
-      const batch = entries.slice(i,i+4).map(({kind,text,meaning,source,createdAt,review,reviewedAt}) =>
-        ({kind,text,meaning,source,createdAt,review,reviewedAt}));
+      const batch = entries.slice(i,i+4).map(entry => ({
+        kind:entry.kind, text:entry.text, meaning:entry.meaning, source:entry.source,
+        createdAt:entry.createdAt, review:entry.review, reviewedAt:entry.reviewedAt,
+        ...PocketTransfer.schedule(entry)
+      }));
       const result = await send({op:'import', entries:batch});
       if (!result?.ok) return {ok:false, code:result?.code || 'storage'};
     }
@@ -91,7 +94,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     }
     request = {op:'import', expectedMode:message.expectedMode, entries:message.entries.map(entry => ({
       kind:entry?.kind, text:entry?.text, meaning:entry?.meaning, source:entry?.source,
-      createdAt:entry?.createdAt, review:entry?.review, reviewedAt:entry?.reviewedAt
+      ...PocketTransfer.schedule(entry), createdAt:entry?.createdAt, review:entry?.review, reviewedAt:entry?.reviewedAt
     }))};
   } else {
     request = {op:message.op, id:message.id,

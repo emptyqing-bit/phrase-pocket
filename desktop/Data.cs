@@ -19,6 +19,19 @@ namespace PhrasePocket {
         public string createdAt { get; set; }
         public string review { get; set; }
         public string reviewedAt { get; set; }
+        public long? nextReviewAt { get; set; }
+        public int? intervalDays { get; set; }
+        public int? reviewCount { get; set; }
+        public double? easeFactor { get; set; }
+
+        public void FillSchedule(Entry item) {
+            if (kind != "word" || nextReviewAt.HasValue || !(item.nextReviewAt >= 0) ||
+                !(item.intervalDays >= 0) || !(item.reviewCount >= 0) || !(item.easeFactor > 0)) return;
+            nextReviewAt = item.nextReviewAt;
+            intervalDays = item.intervalDays;
+            reviewCount = item.reviewCount;
+            easeFactor = item.easeFactor;
+        }
     }
 
     internal sealed class StoredCollections {
@@ -196,6 +209,7 @@ namespace PhrasePocket {
                     var existing = entries.Find(x => x.kind == item.kind && SameText(item.kind,x.text,text));
                     string source = item.source == "builtin" || item.source == "ecdict" || item.source == "model" ? item.source : "manual";
                     if (existing != null) {
+                        existing.FillSchedule(item);
                         if (meaning.Length > 0 && (string.IsNullOrEmpty(existing.meaning) || (source == "manual" && existing.source != "manual"))) {
                             existing.meaning = meaning;
                             existing.source = source;
@@ -207,6 +221,7 @@ namespace PhrasePocket {
                         meaning=meaning, source=meaning.Length > 0 ? source : "",
                         createdAt=DateTime.TryParse(item.createdAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out stamp)
                             ? stamp.ToUniversalTime().ToString("o",CultureInfo.InvariantCulture) : Data.Now()};
+                    imported.FillSchedule(item);
                     if (imported.kind == "word" && (item.review == "known" || item.review == "again") &&
                         DateTime.TryParse(item.reviewedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out stamp)) {
                         imported.review = item.review;
