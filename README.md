@@ -1,6 +1,16 @@
 # 随手收 · Phrase Pocket
 
+[English README](README.en.md)
+
 刷 TikTok、哔哩哔哩和抖音网页版时，记下想学的英文表达、种草信息或随手备忘。Chrome / Edge 扩展可以独立使用；连接可选的 Windows 组件后，桌面角落也能轮换显示收藏。
+
+**v0.7.0 新增**：单词收藏页支持"复习单词"闪卡复习（显示释义后标记认识/不认识，复习状态随收藏保存，浏览器模式下可用）；JSON 备份与 Android 版互通，可跨端合并去重。
+
+## 全平台
+
+- **浏览器扩展 + Windows 桌面组件**：本仓库，见下方安装说明
+- **Android 版**：[phrase-pocket-android](https://github.com/emptyqing-bit/phrase-pocket-android)——分享保存、悬浮球速记、SM-2 复习、离线词典、TTS、备份互导、可选 AI 释义（自带接口）
+- 三端收藏可通过 JSON 备份互相合并，按类型和内容去重
 
 | 只装浏览器扩展 | 加装 Windows 组件 |
 | --- | --- |
